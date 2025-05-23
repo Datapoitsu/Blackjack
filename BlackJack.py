@@ -1,19 +1,37 @@
 import random
 import time
 import os
+import pickle
 
 class Player:
     name = "Player"
     money = 1000
     hands = None
+    #Game stats
+    gameCount = 0
+    winCount = 0
+    loseCount = 0
+    tieCount = 0
+    cardsDrown = 0
+    blackjackCount = 0
+    #Money
+    moneyBetted = 0
+    moneyGained = 0
+    moneyLost = 0
+    #Player actions
+    hitCount = 0
+    standFirstCount = 0
+    doubleDownCount = 0
+    splitCount = 0
+    surrenderCount = 0
 
-    def __init__(self,name,money, hands = None):
+    def __init__(self, name:str, money:float, hands = None):
         self.name = name
         self.money = money
         self.hands = hands if hands != None else []
 
 class Hand:
-    def __init__(self,bet,cards = None):
+    def __init__(self, bet:float, cards = None):
         self.cards = cards if cards != None else []
         self.bet = bet
 
@@ -21,9 +39,9 @@ class Card:
     number = 0
     suit = 0
 
-    def __init__(self,n,s = ""):
-        self.number = n
-        self.suit = s
+    def __init__(self,number:int, suit:str = ""):
+        self.number = number
+        self.suit = suit
 
     def CardName(self):
         names = "Ace", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Jack", "Queen", "King"
@@ -37,13 +55,13 @@ def ClearConsole():
     print("\x1b[0m") #Clears ANSI escape code
     os.system('cls' if os.name=='nt' else 'clear')
 
-def PrintListDelay(textList,delay = 0.25, delayLast = False):
+def PrintListDelay(textList:list[str], delay:float = 0.25, delayLast:bool = False):
     for i in range(len(textList)):
         print(textList[i])
         if i < len(textList[i]) or delayLast:
             time.sleep(delay)
 
-def GenerateDeck(deckCount = 1):
+def GenerateDeck(deckCount:int = 1):
     deck = []
     for j in range(deckCount):
         for i in range(13):
@@ -51,19 +69,18 @@ def GenerateDeck(deckCount = 1):
                 deck.append(Card(i+1,k))
     return deck
 
-def Shuffle(cardList):
+def Shuffle(cardList:list):
     for i in range(len(cardList)):
         r = random.randint(0,len(cardList) - 1)
         cardList[r],cardList[i] = cardList[i], cardList[r]
     return cardList
 
-def PrintCards(character, hideFirst = False):
+def PrintCards(character:Player, hideFirst:bool = False):
     print(character.name + " has")
     for hand in character.hands:
         PrintHand(hand,hideFirst)
-        print(" ")
 
-def PrintHand(hand, hideFirst = False):
+def PrintHand(hand:Hand, hideFirst:bool = False):
     time.sleep(0.5)
     for cardIndex in range(len(hand.cards)):
         if hideFirst and cardIndex == 0:
@@ -72,7 +89,7 @@ def PrintHand(hand, hideFirst = False):
             print("\t" + hand.cards[cardIndex].CardName())
         time.sleep(0.25)
 
-def CountValues(cardList):
+def CountValues(cardList:list[Card]):
     values = [0]
     for i in range(len(cardList)):
         for k in range(len(values)):
@@ -86,28 +103,30 @@ def CountValues(cardList):
     values = list(dict.fromkeys(values)) #Removes dublicates
     return values
 
-def CheckValue(cardList,value):
+def CheckValue(cardList:list, value:int):
     return value in CountValues(cardList)
 
-def CheckBust(cardList):
+def CheckBust(cardList:list[Card]):
     values = CountValues(cardList)
     for value in values:
         if value <= 21:
             return False
     return True
 
-def ShouldHouseDraw(house):
+def ShouldHouseDraw(house:Player):
     values = CountValues(house.hands[0].cards)
     for i in range(len(values)):
         if values[i] < 17:
             return True
     return False
 
-def DrawCard(deck, targetHand, count = 1):
+def DrawCard(deck:list[Card], targetHand:list[Card], count:int = 1):
+    if len(deck) == 0:
+        deck = Shuffle(GenerateDeck())
     for i in range(count):
         targetHand.append(deck.pop())
 
-def DealHand(deck,predeterminedCards = None):
+def DealHand(deck:list[Card],predeterminedCards = None):
     if predeterminedCards == None:
         predeterminedCards = []
     arr = predeterminedCards
@@ -115,22 +134,22 @@ def DealHand(deck,predeterminedCards = None):
         arr.append(deck.pop())
     return arr
 
-def CheckPair(cards):
+def CheckPair(cards:list[Card]):
     return len(cards) == 2 and cards[0].number == cards[1].number
 
-def ClampList(list,minValue,maxValue):
+def ClampList(list:list[int],minValue:int,maxValue:int):
     holder = []
     for i in range(len(list)):
         if list[i] >= minValue and list[i] <= maxValue:
             holder.append(list[i])
     return holder
 
-## -------------------- Main loop functions -------------------- ##
-def ClearHands(player,house):
+## -------------------- GameLoop loop functions -------------------- ##
+def ClearHands(player:Player, house:Player):
     player.hands = []
     house.hands = []
 
-def SetHand(player, deck, predefinedCards = None): #Set bet, set hand
+def SetHand(player:Player, deck:list[Card], predefinedCards = None): #Set bet, set hand
     bet = 0
     print("You currently posess \x1b[38;2;255;255;0m" + str(player.money) + "$\x1b[0m")
     while True:
@@ -149,39 +168,43 @@ def SetHand(player, deck, predefinedCards = None): #Set bet, set hand
     player.hands.append(Hand(bet,predefinedCards if predefinedCards != None else []))
     player.hands[-1].bet = bet
     player.money -= bet
+    player.moneyBetted += bet
+    player.cardsDrown += 2 - len(player.hands[-1].cards)
     DrawCard(deck, player.hands[-1].cards, 2 - len(player.hands[-1].cards))
     return player.hands[-1]
 
-def SetUpHouse(house, deck):
+def SetUpHouse(house:Player, deck:list[Card]):
     house.hands.append(Hand(0,[]))
     DrawCard(deck,house.hands[0].cards, 2)
 
-def PrintStartingHands(player,house):
+def PrintStartingHands(player:Player, house:Player):
     print("You bet for \x1b[38;2;255;255;0m" + str(player.hands[0].bet) + "$\x1b[0m\n")
     PrintCards(house,True)
     PrintCards(player)
 
-def CheckStartingBlackJacks(player,house):
+def CheckStartingBlackJacks(player:Player, house:Player):
     ## ----- Check Blackjacks ----- ## 
     if CheckValue(house.hands[0].cards,21) and CheckValue(player.hands[0].cards,21):
-        print(player.name + " & house has BlackJack!","House has ")
+        print(player.name + " & " + house.name + " has BlackJack!","House has ")
         time.sleep(0.25)
         PrintCards(house,False)
+        Player.blackjackCount += 1
         EndBet(player,player.hands[0],0)
         return True
     if CheckValue(player.hands[0].cards,21): #BlackJack
         print(player.name + " has BlackJack!")
+        Player.blackjackCount += 1
         EndBet(player,player.hands[0],1,1.5)
         return True
     if CheckValue(house.hands[0].cards,21):
-        print("House has BlackJack!")
+        print(house.name + " has BlackJack!")
         time.sleep(0.25)
         PrintCards(house,False)
         EndBet(player,player.hands[0],-1)
         return True
     return False
 
-def PlayersTurn(player, hand, deck):
+def PlayersTurn(player:Player, hand:Hand, deck:list[Card]):
     optionText = []
     optionFunction = []
     optionText.append(str(len(optionText) + 1) + ".) Hit")
@@ -209,8 +232,10 @@ def PlayersTurn(player, hand, deck):
             print("Invalid input")
     return globals()[optionFunction[choice - 1]](player,hand,deck)  
 
-def Hit(player,hand,deck):
+def Hit(player:Player, hand:Hand, deck:list[Card]):
     DrawCard(deck,hand.cards)
+    player.hitCount += 1
+    player.cardsDrown += 1
     print(player.name + " drew " + hand.cards[-1].CardName())
     if CheckBust(hand.cards):
         print(player.name + " busted!")
@@ -221,13 +246,18 @@ def Hit(player,hand,deck):
     PrintCards(player)
     return PlayersTurn(player, hand, deck)
 
-def Stand(player, hand, deck):
+def Stand(player:Player, hand:Hand, deck:list[Card]):
+    if len(hand.cards) <= 2:
+        player.standFirstCount += 1
     return
 
-def DoubleDown(player, hand, deck):
+def DoubleDown(player:Player, hand:Hand, deck:list[Card]):
     player.money -= hand.bet
+    player.moneyBetted += hand.bet
     hand.bet *= 2
+    player.doubleDownCount += 1
     DrawCard(deck,hand.cards)
+    player.cardsDrown += 1
     print(player.name + " drew " + hand.cards[-1].CardName())
     if CheckBust(hand.cards):
         print(player.name + " busted!")
@@ -238,19 +268,31 @@ def DoubleDown(player, hand, deck):
     PrintCards(player)
     return
 
-def Surrender(player, hand, deck):
+def Surrender(player:Player, hand:Hand, deck:list[Card]):
+    player.surrenderCount += 1
     return EndBet(player, hand, 1, 0.5)
 
-def Split(player, hand, deck):
+def Split(player:Player, hand:Hand, deck:list[Card]):
     cardHolder = hand.cards.pop()
     DrawCard(deck,hand.cards)
+    player.cardsDrown += 1
     PrintHand(hand)
-    PlayersTurn(player,hand,deck)
+    if CheckValue(hand.cards,21):
+        print(player.name + " has BlackJack!")
+        Player.blackjackCount += 1
+        EndBet(player,hand,1,1.5)
+    else:
+        PlayersTurn(player,hand,deck)
     handHolder = SetHand(player,deck,[cardHolder])
     PrintHand(handHolder)
-    return PlayersTurn(player,handHolder,deck)
+    if CheckValue(handHolder.cards,21):
+        print(player.name + " has BlackJack!")
+        Player.blackjackCount += 1
+        EndBet(player,handHolder,1,1.5)
+    else:
+        return PlayersTurn(player,handHolder,deck)
 
-def HousesTurn(house,deck):
+def HousesTurn(house:Player, deck:list[Card]):
     print(house.name + " reveals!")
     time.sleep(0.5)
     PrintCards(house, False)
@@ -260,7 +302,7 @@ def HousesTurn(house,deck):
         print(house.name + " drew " + house.hands[0].cards[-1].CardName())
         time.sleep(1)   
 
-def CountPoints(player,house):
+def CountPoints(player:Player, house:Player):
     #Check Busts
     for hand in player.hands[:]:
         if CheckBust(hand.cards):
@@ -289,32 +331,40 @@ def CountPoints(player,house):
         elif playerScores[i] < houseScore:
             EndBet(player,hand,-1)
 
-def EndBet(player, hand ,result,payoutRatio = 1):
+def EndBet(player:Player, hand:Hand, result:int, payoutRatio:float = 1):
+    player.gameCount += 1
     time.sleep(1)
     bet = hand.bet
     if hand in player.hands:
         player.hands.remove(hand)
     if result < 0:
-        print("House won!")
+        player.loseCount += 1
+        player.moneyLost += bet
+        print("\x1b[38;2;125;0;0m" + player.name + " lost!\x1b[0m")
         return
     if result == 0:
         print("Tie!")
+        player.tieCount += 1
         player.money += bet
         return
     if result > 0:
         if result > 0 and payoutRatio > 0 and payoutRatio < 1: #Surrender
-            print(player.name + " surrended!")
+            player.loseCount += 1
+            print("\x1b[38;2;125;0;0m" + player.name + " surrended!\x1b[0m")
             time.sleep(0.25)
             print("Returned \x1b[38;2;255;255;0m" + str(bet * payoutRatio) + "$\x1b[0m")
+            player.moneyLost += bet * payoutRatio
             player.money += bet * payoutRatio
         else: #Actual victory!
-            print(player.name + " won!")
+            player.winCount += 1
+            print("\x1b[38;2;0;255;0m" + player.name + " won!$\x1b[0m")
             time.sleep(0.25)
             print("You gained \x1b[38;2;255;255;0m" + str(bet * payoutRatio) + "!$\x1b[0m")
+            player.moneyGained += bet * payoutRatio
             player.money += bet + bet * payoutRatio
         return
 
-def PlayRound(player, house, deck):
+def PlayRound(player:Player, house:Player, deck:list[Card]):
     ClearConsole()
     ClearHands(player, house)
     SetHand(player, deck)
@@ -331,7 +381,68 @@ def PlayRound(player, house, deck):
     if len(player.hands) > 0:
         CountPoints(player,house)
 
-def Setup():
+def DisplayStats(player:Player):
+    ClearConsole()
+    PrintListDelay([
+        player.name + "'s stats:",
+        "\tGame:",
+        "\t\tTotal games: " + str(player.gameCount),
+        "\t\tGames won: \x1b[38;2;0;" + ("125" if player.winCount > 0 else "0") + ";0m" + str(player.winCount) + "\x1b[0m",
+        "\t\tGames lost: \x1b[38;2;" + ("125" if player.loseCount > 0 else "0") +";0;0m" + str(player.loseCount) + "\x1b[0m",
+        "\t\tGames tied: " + str(player.loseCount),
+        "\t\tCards count: " + str(player.blackjackCount),
+        "\t\tBlackjack count: " + str(player.blackjackCount),
+        "\tMoney:",
+        "\t\tMoney: \x1b[38;2;255;255;0m" + str(player.money) + "$\x1b[0m",
+        "\t\tMoney bet: \x1b[38;2;255;255;0m" + str(player.moneyBetted) + "$\x1b[0m",
+        "\t\tMoney gained: \x1b[38;2;0;" + ("125" if player.moneyGained > 0 else "0") + ";0m" + str(player.moneyGained) + "$\x1b[0m",
+        "\t\tMoney lost: \x1b[38;2;" + ("125" if player.moneyLost > 0 else "0") + ";0;0m" + str(player.moneyLost) + "$\x1b[0m",
+        "\tPlaystyle:",
+        "\t\tHit: " + str(player.hitCount),
+        "\t\tStand on dealt hand: " + str(player.standFirstCount),
+        "\t\tDouble down: " + str(player.doubleDownCount),
+        "\t\tSplit: " + str(player.splitCount),
+        "\t\tSurrender: \x1b[38;2;" + ("125" if player.surrenderCount > 0 else "0") + ";0;0m" + str(player.surrenderCount) + "\x1b[0m",
+    ],0.25,True)
+    input("Press enter to continue")
+    ClearConsole()
+
+def SaveFile(player:Player):
+    with open("savefile.pkl", "wb") as f:
+        pickle.dump(player, f)
+
+def LoadFile(player:Player):
+    with open("savefile.pkl", "rb") as f:
+        loadedData = pickle.load(f)
+    return loadedData
+
+def MainMenu():
+    ClearConsole()
+    optionText = []
+    optionFunction = []
+    optionText.append(str(len(optionText) + 1) + ".) New game")
+    optionFunction.append("NewGame")
+    if os.path.exists("savefile.pkl"):
+        optionText.append(str(len(optionText) + 1) + ".) Load save file")
+        optionFunction.append("LoadGame")
+    optionText.append(str(len(optionText) + 1) + ".) Quit game")
+    optionFunction.append("QuitGame")
+    PrintListDelay(optionText,0.25,True)
+    choice = None
+    while True:
+        try:
+            choice = int(input())
+            if choice < 1 or choice > len(optionText):
+                continue
+            break
+        except:
+            print("Invalid input")
+    ClearConsole()
+    return globals()[optionFunction[choice - 1]]()
+
+def NewGame():
+    house = Player("House",0)
+    deck = Shuffle(GenerateDeck(1))
     name = input("Name: ")
     while True:
         try:
@@ -343,23 +454,39 @@ def Setup():
         except:
             print("Invalid input, try again.")
     player = Player(name,money)
-    house = Player("Mc Gillisson",0)
-    deck = GenerateDeck(1)#Shuffle()
-    Main(player, house, deck)
+    return GameLoop(player, house, deck)
 
-def Main(player, house, deck):
-    time.sleep(0.5)
-    print("You currently posess \x1b[38;2;255;255;0m" + str(player.money) + "$\x1b[0m")
-    time.sleep(0.5)
-    PlayRound(player, house, deck)
-    time.sleep(0.5)
-    if player.money < 1:
-        PrintListDelay(["Money wasted!","Game over!"],0.25,False)
-        return
-    PrintListDelay(["You currently posess \x1b[38;2;255;255;0m" + str(player.money) + "$\x1b[0m","Do you want to continue?","1.) Continue","2.) Exit"],0.25,False)
-    choice = input()
-    if choice == "2":
-        return
+def LoadGame():
+    house = Player("House",0)
+    deck = Shuffle(GenerateDeck(1))
+    player = LoadFile(Player("",0))
+    print("Welcome back " + str(player.name))
+    time.sleep(1)
+    return GameLoop(player, house, deck)
+
+def QuitGame():
+    return
+
+def GameLoop(player:Player, house:Player, deck:list[Card]):
+    SaveFile(player)
     ClearConsole()
-    return Main(player, house, deck)
-Setup()
+    choice = None
+    while choice not in ["1",""]:
+        PrintListDelay(["You currently posess \x1b[38;2;255;255;0m" + str(player.money) + "$\x1b[0m","1.) Play Blackjack","2.) Stats","3.) Quit"],0.25,False)
+        choice = input()
+        if choice in ["1",""]:
+            PlayRound(player, house, deck)
+            time.sleep(0.5)
+            if player.money < 1:
+                PrintListDelay(["Money wasted!","Game over!"],0.25,False)
+                os.remove("savefile.pkl")
+                return
+        elif choice == "2":
+            DisplayStats(player)
+        elif choice == "3":
+            return MainMenu()
+        else:
+            print("Invalid input")
+    ClearConsole()
+    return GameLoop(player, house, deck)
+MainMenu()
