@@ -383,7 +383,7 @@ def PlayRound(player:Player, house:Player, deck:list[Card]):
 
         HousesTurn(house,deck)
         PrintCards(player)
-        if len(player.hands) > 0:
+        for hand in player.hands:
             CountPoints(player,house)
     input("Press enter to continue...")
 
@@ -448,7 +448,7 @@ def MainMenu():
 
 def NewGame():
     house = Player("House",0)
-    deck = GenerateDeck(1)
+    deck = Shuffle(GenerateDeck(1))
     name = input("Name: ")
     while True:
         try:
