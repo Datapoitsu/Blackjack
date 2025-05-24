@@ -76,9 +76,16 @@ def Shuffle(cardList:list):
     return cardList
 
 def PrintCards(character:Player, hideFirst:bool = False):
-    print(character.name + " has")
-    for hand in character.hands:
-        PrintHand(hand,hideFirst)
+    if len(character.hands) <= 0:
+        print(character.name + " doesn't have a bet.")
+        return
+    if len(character.hands) == 1:
+        print(character.name + " has")
+        PrintHand(character.hands[0],hideFirst)
+    else:
+        for handIndex in range(len(character.hands)):
+            print(character.name + " has on " + str(handIndex + 1) + ". hand")
+            PrintHand(character.hands[handIndex],hideFirst)
 
 def PrintHand(hand:Hand, hideFirst:bool = False):
     time.sleep(0.5)
@@ -370,16 +377,15 @@ def PlayRound(player:Player, house:Player, deck:list[Card]):
     SetHand(player, deck)
     SetUpHouse(house, deck)
     PrintStartingHands(player,house)
-    if CheckStartingBlackJacks(player, house):
-        return
+    if not CheckStartingBlackJacks(player, house):
+        if len(player.hands) > 0:
+            PlayersTurn(player, player.hands[0], deck)
 
-    if len(player.hands) > 0:
-        PlayersTurn(player, player.hands[0], deck)
-
-    HousesTurn(house,deck)
-
-    if len(player.hands) > 0:
-        CountPoints(player,house)
+        HousesTurn(house,deck)
+        PrintCards(player)
+        if len(player.hands) > 0:
+            CountPoints(player,house)
+    input("Press enter to continue...")
 
 def DisplayStats(player:Player):
     ClearConsole()
@@ -442,7 +448,7 @@ def MainMenu():
 
 def NewGame():
     house = Player("House",0)
-    deck = Shuffle(GenerateDeck(1))
+    deck = GenerateDeck(1)
     name = input("Name: ")
     while True:
         try:
