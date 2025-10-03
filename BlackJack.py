@@ -3,6 +3,10 @@ import time
 import os
 import pickle
 
+#TODO LIST
+#Counting for splitting isn't working correctly.
+#No idea what ClampList function does.
+
 def CreateTranslationDict(EnglishWords:list[str], ForeignWords:list[str]) -> dict:
     translation = {}
     for i in range(len(EnglishWords)):
@@ -87,7 +91,11 @@ class Card:
     def CardName(self) -> str:
         names = [translation["Ace"], translation["Two"], translation["Three"], translation["Four"], translation["Five"], translation["Six"], translation["Seven"], translation["Eight"], translation["Nine"], translation["Ten"], translation["Jack"], translation["Queen"], translation["King"]]
         suits = [translation["Hearts"],translation["Diamonds"], translation["Clubs"], translation["Spades"]]
-        return names[self.number - 1] + " " + translation["of"] + " \x1b[38;2;" + ("125;0;0" if self.suit < 2 else "0;0;125") + "m" + suits[self.suit] + "\x1b[0m"
+        if translation["NameOrder"] == "0":
+            return names[self.number - 1] + " " + translation["of"] + " \x1b[38;2;" + ("125;0;0" if self.suit < 2 else "0;0;125") + "m" + suits[self.suit] + "\x1b[0m"
+        elif translation["NameOrder"] == "1":
+            return "\x1b[38;2;" + ("125;0;0" if self.suit < 2 else "0;0;125") + "m" + suits[self.suit] + "\x1b[0m" + " " + names[self.number - 1]
+
 
 def ClearConsole():
     print("\x1b[0m") #Clears ANSI escape code
@@ -182,7 +190,9 @@ def DealHand(deck:list[Card],predeterminedCards = None) -> list[Card]:
 def CheckPair(cards:list[Card]) -> bool:
     return len(cards) == 2 and cards[0].number == cards[1].number
 
+#TODO What is this for???
 def ClampList(list:list[int],minValue:int,maxValue:int) -> list[int]:
+    #Parses out the combinations that are too low or high.
     holder = []
     for i in range(len(list)):
         if list[i] >= minValue and list[i] <= maxValue:
@@ -346,7 +356,7 @@ def HousesTurn(house:Player, deck:list[Card]) -> None:
 
 def CountPoints(player:Player, house:Player) -> None:
     #Check Busts
-    for hand in player.hands[:]:
+    for hand in player.hands:
         if CheckBust(hand.cards):
             print(player.name + " " + translation["Busted"] + "!")
             EndBet(player,hand, -1)
@@ -357,22 +367,20 @@ def CountPoints(player:Player, house:Player) -> None:
     if len(player.hands) <= 0:
         return
     # Compare points 
-    playerScores = []
-    for i in range(len(player.hands)):
-        playerScores.append(ClampList(CountValues(player.hands[i].cards),2,21)[-1])
     houseScore = ClampList(CountValues(house.hands[0].cards),2,21)[-1]
+    print(house.name + " " + translation["HasTotalScoreOf"] + " " + str(houseScore))
     
-    for hand in player.hands[:]:
-        print(house.name + " " + translation["HasTotalScoreOf"] + " " + str(houseScore))
-        print(player.name + " " + translation["HasTotalScoreOf"] + " " + str(playerScores[i]))
+    for hand in player.hands:
+        playerScore = ClampList(CountValues(hand.cards),2,21)[-1]
+        print(player.name + " " + translation["HasTotalScoreOf"] + " " + str(playerScore))
         time.sleep(1)
-        if playerScores[i] == houseScore:
-            EndBet(player,hand,0)
-        elif playerScores[i] > houseScore:
-            EndBet(player,hand,1)
-        elif playerScores[i] < houseScore:
-            EndBet(player,hand,-1)
-
+        if playerScore == houseScore:
+            EndBet(player, hand, 0)
+        elif playerScore > houseScore:
+            EndBet(player, hand, 1)
+        elif playerScore < houseScore:
+            EndBet(player, hand, -1)
+        
 def EndBet(player:Player, hand:Hand, result:int, payoutRatio:float = 1) -> None:
     player.gameCount += 1
     time.sleep(1)
@@ -532,7 +540,7 @@ def ChooseLanguage():
     return Settings()
 
 def NewGame() -> None:
-    house = Player(translation["House"],0)
+    house = Player(translation["Dealer"],0)
     deck = Shuffle(GenerateDeck(1))
     name = input(translation["Name"] + ": ")
     while True:
@@ -555,7 +563,7 @@ def LoadGame() -> None:
     global translation
     player = LoadFile()
     translation = LoadTranslations(player.language)
-    house = Player(translation["House"],0)
+    house = Player(translation["Dealer"],0)
     deck = Shuffle(GenerateDeck(1))
     print(translation["WelcomeBack"] + " " + str(player.name))
     time.sleep(1)
