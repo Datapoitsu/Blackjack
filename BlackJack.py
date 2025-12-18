@@ -7,6 +7,8 @@ import pickle
 #Counting for splitting isn't working correctly.
 #No idea what ClampList function does.
 
+deckCount = 4
+
 def CreateTranslationDict(EnglishWords:list[str], ForeignWords:list[str]) -> dict:
     translation = {}
     for i in range(len(EnglishWords)):
@@ -107,7 +109,7 @@ def PrintListDelay(textList:list[str], delay:float = 0.25, delayLast:bool = Fals
         if i < len(textList[i]) or delayLast:
             time.sleep(delay)
 
-def GenerateDeck(deckCount:int = 1) -> list[Card]:
+def GenerateDeck(deckCount:int = deckCount) -> list[Card]:
     deck = []
     for j in range(deckCount):
         for i in range(13):
@@ -177,6 +179,8 @@ def DrawCard(deck:list[Card], targetHand:list[Card], count:int = 1):
     if len(deck) == 0:
         deck = Shuffle(GenerateDeck())
     for i in range(count):
+        if len(deck) == 0:
+            deck = GenerateDeck()
         targetHand.append(deck.pop())
 
 def DealHand(deck:list[Card],predeterminedCards = None) -> list[Card]:
